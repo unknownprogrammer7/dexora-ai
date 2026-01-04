@@ -206,6 +206,7 @@ with gr.Blocks(css=custom_css, theme=gr.themes.Soft()) as app:
             with gr.Row():
                 msg = gr.Textbox(placeholder="Type a message...", scale=2, show_label=False)
                 send = gr.Button("Send", scale=1)
+                send.click(chat, [msg, chatbot, username_state, file_input], [chatbot, msg])
 
     # BUTTON ACTIONS
     signup_btn.click(signup, [su, sp], [signup_msg, login_panel, chat_panel])
