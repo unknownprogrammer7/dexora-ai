@@ -8,6 +8,13 @@ import json
 import os
 from openai import OpenAI
 from datetime import datetime
+import pyttsx3
+
+engine = pyttsx3.init()
+
+def speak_text(text):
+    engine.say(text)
+    engine.runAndWait()
 
 # -----------------------------
 # CONFIG
@@ -213,6 +220,8 @@ with gr.Blocks(css=custom_css, theme=gr.themes.Soft()) as app:
     login_btn.click(login, [lu, lp], [login_panel, chat_panel, login_msg, username_state])
     send.click(chat, [msg, chatbot, username_state], [chatbot, msg])
     msg.submit(chat, [msg, chatbot, username_state], [chatbot, msg])
+    voice_btn = gr.Button("🎤 Speak")
+voice_btn.click(lambda h: speak_text(h[-1][1]) if h else None, [chatbot], None)
 
 # -----------------------------
 # LAUNCH
