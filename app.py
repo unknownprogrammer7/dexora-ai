@@ -8,6 +8,36 @@ from requests_oauthlib import OAuth2Session
 from openai import OpenAI
 from pypdf import PdfReader
 import docx2txt
+# vector memory logic
+import faiss, numpy as np, pickle
+
+VECTOR_FILE = "vector_store.pkl"
+DIM = 1536
+
+if os.path.exists(VECTOR_FILE):
+    index, texts = pickle.load(open(VECTOR_FILE, "rb"))
+else:
+    index = faiss.IndexFlatL2(DIM)
+    texts = []
+
+def embed(text):
+    return client.embeddings.create(
+        model="text-embedding-3-small",
+        input=text
+    ).data[0].embedding
+
+def save_vector_memory(text):
+    vec = np.array(embed(text)).astype("float32")
+    index.add(vec.reshape(1,-1))
+    texts.append(text)
+    pickle.dump((index, texts), open(VECTOR_FILE,"wb"))
+
+def recall_vector_memory(query):
+    if index.ntotal == 0:
+        return ""
+    q = np.array(embed(query)).astype("float32")
+    _, ids = index.search(q.reshape(1,-1), 2)
+    return "\n".join(texts[i] for i in ids[0])
 
 # ================= ENV =================
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
