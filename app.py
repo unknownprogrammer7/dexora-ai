@@ -118,6 +118,10 @@ async def chat_guard(req: Request):
     if "user" not in req.session:
         return RedirectResponse("/login")
     return RedirectResponse("/chat/ui")
+@app.get("/logout")
+async def logout(req: Request):
+    req.session.clear()
+    return RedirectResponse("/login")
 
 # ================= CHAT =================
 def chat(msg, history, request: gr.Request, file):
