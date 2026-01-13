@@ -177,26 +177,43 @@ all_history[user] = user_history
 
 # Save back
 save_chat_history(all_history)
+# ------------------------------
+# GRADIO UI WITH GOOGLE LOGIN
+# ------------------------------
+with gr.Blocks(css="""
+body { background-color: #0f172a; color: white; }
+.gradio-container { max-width: 700px; margin: auto; }
+textarea, .gr-input { background-color: #1e293b !important; color: white !important; border-radius: 12px !important; }
+button { border-radius: 10px !important; font-weight: bold; background-color: #4f46e5 !important; color: white !important; }
+#chatbox { background-color: #111827; border-radius: 12px; padding: 10px; }
+""") as chat_app:
 
-# ================= GRADIO =================
-# Load previous history for the current user
-all_history = load_chat_history()
-user_history = all_history.get(username_state.value, [])
-chatbot = gr.Chatbot(value=[(m["user"], m["assistant"]) for m in user_history], elem_id="chatbox", height=450)
-with gr.Blocks() as chat_app:
-    gr.Markdown("## 💬 Dexora AI")
-    chatbot = gr.Chatbot(height=450)
-    with gr.Row():
-        msg = gr.Textbox(placeholder="Message Dexora…", scale=8)
-        upload = gr.File(scale=1)
-        send = gr.Button("➤", scale=1)
-    send.click(chat,[msg,chatbot,gr.Request(),upload],[chatbot,msg])
-    msg.submit(chat,[msg,chatbot,gr.Request(),upload],[chatbot,msg])
-    history, _ = chat(msg, chatbot.value, username_state.value, upload)
-# Save updated history
-all_history = load_chat_history()
-all_history[username_state.value] = [{"user": u, "assistant": a} for u,a in history]
-save_chat_history(all_history)
+    gr.Markdown("## 💬 Dexora AI (Google Login Only)")
+
+    # Login button (redirect to your FastAPI /login route)
+    login_btn = gr.Button("Login with Google")
+    login_btn.click(lambda: RedirectResponse("/login"), [], [])
+
+    # Chat UI (hidden until logged in)
+    chatbot = gr.Chatbot(height=450, visible=False)
+    msg = gr.Textbox(placeholder="Message Dexora…", scale=8, visible=False)
+    upload = gr.File(scale=1, visible=False)
+    send = gr.Button("➤", scale=1, visible=False)
+
+    # Function to toggle visibility based on login (FastAPI sets session)
+    def update_visibility(is_logged_in: bool):
+        if is_logged_in:
+            return gr.update(visible=False), gr.update(visible=True), gr.update(visible=True), gr.update(visible=True)
+        else:
+            return gr.update(visible=True), gr.update(visible=False), gr.update(visible=False), gr.update(visible=False)
+
+    # You can call this after FastAPI login check
+    # login_check would return True/False based on session
+    login_check = lambda: False  # placeholder, replace with session check
+    login_btn.click(login_check, [], [login_btn, chatbot, msg, send])
+    
+    send.click(chat, [msg, chatbot, gr.State("User"), upload], [chatbot, msg])
+    msg.submit(chat, [msg, chatbot, gr.State("User"), upload], [chatbot, msg])
 
 app = gr.mount_gradio_app(app, chat_app, path="/chat/ui")
 
