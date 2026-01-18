@@ -1,8 +1,12 @@
-httpx
-fastapi
-uvicorn
-authlib
-starlette
-itsdangerous
-python-multipart
-pypdf
+fastapi                   # FastAPI framework
+uvicorn                   # ASGI server for FastAPI
+authlib                    # OAuth support (Google login)
+starlette                  # Required by FastAPI & Authlib
+itsdangerous               # Session security
+python-multipart           # File upload support
+pypdf                      # PDF reading
+docx2txt                   # DOCX reading
+httpx                      # Required by Authlib
+openai                     # OpenAI API for chat responses
+numpy                      # For vector embedding (if using FAISS)
+faiss-cpu                  # Optional: vector memory for AI
