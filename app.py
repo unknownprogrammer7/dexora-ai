@@ -121,10 +121,15 @@ async def home(request: Request):
     </body>
     </html>
     """)
-
+    
 @app.post("/chat")
 async def chat(request: Request, message: str = Form(...)):
-    user = request.session["user"]
+    user = request.session.get("user")
+
+    if not user or "email" not in user:
+        request.session.clear()
+        return RedirectResponse("/login", status_code=302)
+
     chats = load_chats()
     chats.setdefault(user["email"], [])
 
