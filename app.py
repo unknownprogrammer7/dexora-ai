@@ -70,6 +70,20 @@ def read_file(file: UploadFile):
         return file.file.read().decode("utf-8")
     return "Unsupported file"
 
+@app.get("/admin")
+async def admin_dashboard(request: Request):
+    user = request.session.get("user")
+    if not user or get_role(user["email"]) != "admin":
+        return HTMLResponse("❌ Access Denied", status_code=403)
+
+    chats = load_chats()  # all chat history
+
+    return HTMLResponse(f"""
+    <h2>Admin Dashboard</h2>
+    <h3>Chat History</h3>
+    <pre>{json.dumps(chats, indent=2)}</pre>
+    """)
+
 # =========================
 # ROUTES
 # =========================
