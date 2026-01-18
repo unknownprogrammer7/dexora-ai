@@ -182,7 +182,7 @@ async def auth(request: Request):
 @app.get("/logout")
 async def logout(request: Request):
     request.session.clear()
-    return RedirectResponse("/")
+    return RedirectResponse("/", status_code=302)
 
 # =========================
 # START
