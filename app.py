@@ -148,7 +148,7 @@ chats[user["email"]].append({
     "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 })
 
-    save_chats(chats)
+save_chats(chats)
     return RedirectResponse("/", status_code=302)
 
 @app.post("/upload")
