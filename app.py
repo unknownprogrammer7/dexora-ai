@@ -5,6 +5,14 @@ from starlette.middleware.sessions import SessionMiddleware
 from authlib.integrations.starlette_client import OAuth
 from pypdf import PdfReader
 import uvicorn
+from openai import OpenAI
+client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+
+r = client.chat.completions.create(
+    model="gpt-4o-mini",
+    messages=[{"role": "user", "content": message}]
+)
+reply = r.choices[0].message.content
 
 # =========================
 # ENV
