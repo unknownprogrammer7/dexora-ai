@@ -1,13 +1,8 @@
-fastapi                   # FastAPI framework
-uvicorn                   # ASGI server for FastAPI
-authlib                    # OAuth support (Google login)
-starlette                  # Required by FastAPI & Authlib
-itsdangerous               # Session security
-python-multipart           # File upload support
-pypdf                      # PDF reading
-docx2txt                   # DOCX reading
-httpx                      # Required by Authlib
-openai                     # OpenAI API for chat responses
-numpy                      # For vector embedding (if using FAISS)
-faiss-cpu    
-tempfile        
+fastapi==0.109.0
+uvicorn[standard]==0.23.2
+python-multipart==0.0.6
+authlib==1.2.1
+pypdf==3.14.0
+docx2txt==0.8
+openai==1.34.0
+python-dotenv==1.1.1
