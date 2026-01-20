@@ -26,7 +26,12 @@ client = OpenAI(api_key=OPENAI_API_KEY)
 # APP INIT
 # =========================
 app = FastAPI()
-app.add_middleware(SessionMiddleware, secret_key=SESSION_SECRET)
+app.add_middleware(
+    SessionMiddleware,
+    secret_key=SESSION_SECRET,
+    same_site="lax",
+    https_only=True
+)
 
 # =========================
 # GOOGLE OAUTH
@@ -167,13 +172,24 @@ async def upload(request: Request, file: UploadFile = File(...)):
 
 @app.get("/login")
 async def login(request: Request):
-    return await oauth.google.authorize_redirect(request, request.url_for("auth"))
+    return await oauth.google.authorize_redirect(request, request.url_for("auth")) 
 
 @app.get("/auth")
 async def auth(request: Request):
     token = await oauth.google.authorize_access_token(request)
-    request.session["user"] = token["userinfo"]
-    return RedirectResponse("/")
+
+    user = token.get("userinfo")
+    if not user:
+        return HTMLResponse("Login failed: No user info", status_code=400)
+
+    request.session["user"] = {
+        "email": user.get("email"),
+        "name": user.get("name"),
+        "picture": user.get("picture")
+    }
+
+    return RedirectResponse("/", status_code=302)
+
 
 @app.get("/logout")
 async def logout(request: Request):
