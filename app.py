@@ -1,18 +1,22 @@
 import logging
-logging.basicConfig(level=logging.DEBUG)
 import os
 import json
 from datetime import datetime
 from fastapi import FastAPI, Request, UploadFile, File, Form
 from fastapi.responses import RedirectResponse, HTMLResponse
-from starlette.middleware.sessions import SessionMiddleware
 from fastapi.staticfiles import StaticFiles
+from starlette.middleware.sessions import SessionMiddleware
 from authlib.integrations.starlette_client import OAuth
 from pypdf import PdfReader
 import docx2txt
 import uvicorn
-from openai import OpenAI
 import tempfile
+from openai import OpenAI
+
+# =========================
+# LOGGING
+# =========================
+logging.basicConfig(level=logging.DEBUG)
 
 # =========================
 # CONFIG / ENV
@@ -33,7 +37,7 @@ app.add_middleware(
     SessionMiddleware,
     secret_key=SESSION_SECRET,
     same_site="lax",
-    https_only=False  # False for local testing
+    https_only=False  # Set True for production
 )
 
 # Mount static folder
@@ -72,7 +76,6 @@ def read_file(file: UploadFile):
         reader = PdfReader(file.file)
         return "\n".join(p.extract_text() or "" for p in reader.pages)
     if file.filename.endswith(".docx"):
-        # Save temporarily to read docx
         with tempfile.NamedTemporaryFile(delete=False, suffix=".docx") as tmp:
             tmp.write(file.file.read())
             tmp_path = tmp.name
@@ -103,58 +106,36 @@ async def admin_dashboard(request: Request):
     """)
 
 # =========================
-# ROUTES
+# HOME / LOGIN PAGE
 # =========================
 @app.get("/")
 async def home(request: Request):
     user = request.session.get("user")
 
-    # If user is not logged in
+    # Login page
     if not user or "email" not in user:
         return HTMLResponse("""
         <html>
-          <head>
+        <head>
             <title>Login - Nexora AI</title>
             <style>
-              body {
-                display: flex;
-                flex-direction: column;
-                align-items: center;
-                justify-content: center;
-                height: 100vh;
-                font-family: Arial, sans-serif;
-                background-color: #f5f5f5;
-              }
-              img {
-                width: 200px;
-                margin-bottom: 20px;
-              }
-              button {
-                padding: 10px 20px;
-                font-size: 16px;
-                cursor: pointer;
-                border-radius: 8px;
-                border: none;
-                background-color: #4caf50;
-                color: white;
-              }
-              button:hover {
-                background-color: #45a049;
-              }
+              body { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; font-family: Arial, sans-serif; background-color: #f5f5f5; }
+              img { width: 200px; margin-bottom: 20px; }
+              button { padding: 10px 20px; font-size: 16px; cursor: pointer; border-radius: 8px; border: none; background-color: #4caf50; color: white; }
+              button:hover { background-color: #45a049; }
             </style>
-          </head>
-          <body>
+        </head>
+        <body>
             <!-- Company Logo -->
             <img src="https://sora.chatgpt.com/g/gen_01kfcjsjgeemgamp0av01jn3cf" alt="PRESENTING NEXORA BY DIGWAR">
 
-            <!-- Login -->
-            <h2>Login to Dexora AI</h2>
+            <h2>Login to Nexora AI</h2>
             <a href="/login"><button>Login with Google</button></a>
-          </body>
+        </body>
         </html>
         """)
 
-    # If user is logged in, show chat
+    # Chat page
     chats = load_chats().get(user["email"], [])
     chat_html = "".join(
         f"<p><b>You:</b> {c['user']}<br><b>AI:</b> {c['assistant']}</p>"
@@ -163,25 +144,26 @@ async def home(request: Request):
 
     return HTMLResponse(f"""
     <html>
-    <head>
-      <link rel="manifest" href="/static/manifest.json">
-    </head>
+    <head><title>Nexora AI Chat</title></head>
     <body>
-      <h3>Welcome {user['email']}</h3>
-      {chat_html}
-      <form method="post" action="/chat">
-        <input name="message" required>
-        <button type="submit">Send</button>
-      </form>
-      <form method="post" action="/upload" enctype="multipart/form-data">
-        <input type="file" name="file">
-        <button type="submit">Upload File</button>
-      </form>
-      <a href="/logout">Logout</a>
+        <h3>Welcome {user['email']}</h3>
+        {chat_html}
+        <form method="post" action="/chat">
+            <input name="message" required>
+            <button type="submit">Send</button>
+        </form>
+        <form method="post" action="/upload" enctype="multipart/form-data">
+            <input type="file" name="file">
+            <button type="submit">Upload File</button>
+        </form>
+        <a href="/logout">Logout</a>
     </body>
     </html>
     """)
 
+# =========================
+# CHAT ROUTE
+# =========================
 @app.post("/chat")
 async def chat(request: Request, message: str = Form(...)):
     user = request.session.get("user")
@@ -200,17 +182,19 @@ async def chat(request: Request, message: str = Form(...)):
         reply = r.choices[0].message.content
     except Exception as e:
         logging.error(f"OpenAI error: {e}")
-        reply = f"⚠️ AI service unavailable. Error: {e}"
+        reply = "⚠️ AI service unavailable. Try again later."
 
     chats[user["email"]].append({
         "user": message,
         "assistant": reply,
         "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     })
-
     save_chats(chats)
     return RedirectResponse("/", status_code=302)
 
+# =========================
+# FILE UPLOAD
+# =========================
 @app.post("/upload")
 async def upload(request: Request, file: UploadFile = File(...)):
     user = request.session.get("user")
@@ -228,6 +212,9 @@ async def upload(request: Request, file: UploadFile = File(...)):
     save_chats(chats)
     return RedirectResponse("/", status_code=302)
 
+# =========================
+# GOOGLE LOGIN / AUTH
+# =========================
 @app.get("/login")
 async def login(request: Request):
     return await oauth.google.authorize_redirect(request, request.url_for("auth"))
@@ -235,7 +222,8 @@ async def login(request: Request):
 @app.get("/auth")
 async def auth(request: Request):
     token = await oauth.google.authorize_access_token(request)
-    user = await oauth.google.parse_id_token(request, token)
+    user = oauth.google.parse_id_token(request, token)  # synchronous
+
     if not user:
         return HTMLResponse("Login failed: No user info", status_code=400)
 
